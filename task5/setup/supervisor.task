@@ -1,0 +1,23 @@
+[supervisord]
+nodaemon=true
+loglevel=debug
+logfile=/dli/tasks/supervisord.log
+
+[program:digits_srv]
+command=python -m digits
+environment=DIGITS_URL_PREFIX=%(ENV_DIGITS_URL_PREFIX)s
+environment=DIGITS_JOB_DIR=%(ENV_DIGITS_JOB_DIR)s
+environment=DIGITS_LOGFILE_FILENAME=%(ENV_DIGITS_LOGFILE_FILENAME)s
+
+[program:jupyter_notebook]
+command=jupyter notebook --allow-root --no-browser --ip 0.0.0.0 --NotebookApp.token='' --NotebookApp.base_url='%(ENV_JUPYTER_PASSWORD)s/' /dli
+#command=/usr/local/assessment/bin/jupyter notebook --allow-root --no-browser --ip 0.0.0.0 --NotebookApp.token='' --NotebookApp.base_url='%(ENV_JUPYTER_PASSWORD)s/' /dli
+user=root
+
+[program:nginx]
+command=openresty -c /dli/tasks/%(ENV_TASK_NAME)s/setup/nginx.run -g 'daemon off;'
+
+[program:tensorboard]
+command=tensorboard --logdir=/dli/tasks/tensorboard --path_prefix='%(ENV_TENSORBOARD_URL_PREFIX)s'
+autorestart=true
+

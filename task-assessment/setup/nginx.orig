@@ -1,0 +1,81 @@
+env TASK_NAME;
+env TASK_FILE;
+env JUPYTER_PASSWORD;
+
+worker_processes auto;
+pid /dli/.nginx.pid;
+
+events {
+        worker_connections 768;
+}
+
+http {
+        sendfile on;
+        tcp_nopush on;
+        tcp_nodelay on;
+        keepalive_timeout 65;
+        types_hash_max_size 2048;
+
+        default_type application/octet-stream;
+
+        ssl_protocols TLSv1 TLSv1.1 TLSv1.2; # Dropping SSLv3, ref: POODLE
+        ssl_prefer_server_ciphers on;
+
+        access_log /var/log/access.log;
+        error_log /var/log/error.log;
+
+        gzip on;
+        gzip_disable "msie6";
+
+server {
+
+    listen 8080 default_server;
+    listen [::]:8080 default_server;
+
+    location /proxytensorboard {
+        proxy_pass http://localhost:6006;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "Upgrade";
+        proxy_set_header Host $http_host;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_buffering off;
+    }
+
+    location /proxydigits {
+        proxy_pass http://localhost:5000;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "Upgrade";
+        proxy_set_header Host $http_host;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_buffering off;
+    }
+
+    location /tensorboard {
+        return 302 $scheme://$http_host/proxytensorboard/;
+    }
+
+
+    location /digits {
+        return 302 $scheme://$http_host/proxydigits;
+    }
+
+    location /lab {
+        set_by_lua_block $jupyter_password { return os.getenv("JUPYTER_PASSWORD") }
+	set_by_lua_block $task_name { return os.getenv("TASK_NAME") }
+	set_by_lua_block $task_file { return os.getenv("TASK_FILE") }
+        return 302 $scheme://$http_host/$jupyter_password/notebooks/tasks/$task_name/task/$task_file;
+    }
+
+    location / {
+        proxy_pass http://localhost:8888;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "Upgrade";
+        proxy_set_header Host $http_host;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_buffering off;
+    }
+}
+}
